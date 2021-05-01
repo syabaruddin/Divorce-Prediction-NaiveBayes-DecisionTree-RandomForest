@@ -1,0 +1,437 @@
+---
+title: "Divorce Prediction : Naive Bayes, Decision Tree, and Random Forest "
+author: "By : Syabaruddin Malik"
+output:
+  html_document:
+    df_print: paged
+    highlight: zenburn
+    theme: spacelab
+    toc: true
+    toc_float:
+      collapsed: yes
+    number_sections : true
+
+
+---
+
+
+![](C:\SyabaruddinFolder\Work\Algoritma\DATAScicourse\MachineLearning\RegressionModels\ML\regressionmodels-master/divo.jpg)
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center",
+  comment = "#>")
+options(scipen = 9999)
+
+```
+
+
+# Introduction
+
+Ever been heart broken and/or wondered what makes a lasting Marriage? This dataset and prediction analysis may help you.
+
+This dataset contains data about 150 couples with their corresponding Divorce Predictors Scale variables (DPS) on the basis of Gottman couples therapy.The couples are from various regions of Turkey wherein the records were acquired from face-to-face interviews from couples who were already divorced or happily married. All responses were collected on a 5 point scale (0=Never, 1=Seldom, 2=Averagely, 3=Frequently, 4=Always).
+
+Source dataset : https://archive.ics.uci.edu/ml/datasets/Divorce+Predictors+data+set.
+
+
+# Data Preparation
+
+## Library Setup
+
+Before we do analysis, we need to load the required library packages.
+
+```{r}
+library(dplyr)        #praprocess data
+library(caret)        #confusion matrix
+library(e1071)        #Naive Bayes Classifier
+library(rsample)      #Splitting data
+library(partykit)     #Decision Tree
+library(randomForest) #Random Forest
+library(readr)        #Read RDS
+
+
+# plot
+library(ggplot2)
+library(tidyr)
+
+
+```
+
+
+
+## Import Data
+
+We need the data to do the analysis. Then, we have to load the dataset
+
+```{r}
+
+divorce <- readxl::read_xlsx("divorce.xlsx")
+
+head(divorce)
+```
+
+
+## Data Description
+
+Divorce Predictors dataset is consist of 54 questionnaire which carried out by using the Divorce Predictors Scale (DPS) on the basis of Gottman couples therapy. Questionnaire was taken place in Turkey. 
+
+Target Variable –> Class, 0-Not_Divorce ; 1-Divorce
+
+All responses were collected on a 5 point scale (0=Never, 1=Seldom, 2=Averagely, 3=Frequently, 4=Always).
+
+The list of Questionnaires:
+
+1. If one of us apologizes when our discussion deteriorates, the discussion ends.
+2. I know we can ignore our differences, even if things get hard sometimes.
+3. When we need it, we can take our discussions with my spouse from the beginning and correct it.
+4. When I discuss with my spouse, to contact him will eventually work.
+5. The time I spent with my wife is special for us.
+6. We don't have time at home as partners.
+7. We are like two strangers who share the same environment at home rather than family.
+8. I enjoy our holidays with my wife.
+9. I enjoy traveling with my wife.
+10. Most of our goals are common to my spouse.
+11. I think that one day in the future, when I look back, I see that my spouse and I have been in harmony with each other.
+12. My spouse and I have similar values in terms of personal freedom.
+13. My spouse and I have similar sense of entertainment.
+14. Most of our goals for people (children, friends, etc.) are the same.
+15. Our dreams with my spouse are similar and harmonious.
+16. We're compatible with my spouse about what love should be.
+17. We share the same views about being happy in our life with my spouse
+18. My spouse and I have similar ideas about how marriage should be
+19. My spouse and I have similar ideas about how roles should be in marriage
+20. My spouse and I have similar values in trust.
+21. I know exactly what my wife likes.
+22. I know how my spouse wants to be taken care of when she/he sick.
+23. I know my spouse's favorite food.
+24. I can tell you what kind of stress my spouse is facing in her/his life.
+25. I have knowledge of my spouse's inner world.
+26. I know my spouse's basic anxieties.
+27. I know what my spouse's current sources of stress are.
+28. I know my spouse's hopes and wishes.
+29. I know my spouse very well.
+30. I know my spouse's friends and their social relationships.
+31. I feel aggressive when I argue with my spouse.
+32. When discussing with my spouse, I usually use expressions such as ‘you always’ or ‘you never’ .
+33. I can use negative statements about my spouse's personality during our discussions.
+34. I can use offensive expressions during our discussions.
+35. I can insult my spouse during our discussions.
+36. I can be humiliating when we discussions.
+37. My discussion with my spouse is not calm.
+38. I hate my spouse's way of open a subject.
+39. Our discussions often occur suddenly.
+40. We're just starting a fight before I know what's going on.
+41. When I talk to my spouse about something, my calm suddenly breaks.
+42. When I argue with my spouse, ı only go out and I don't say a word.
+43. I mostly stay silent to calm the environment a little bit.
+44. Sometimes I think it's good for me to leave home for a while.
+45. I'd rather stay silent than discuss with my spouse.
+46. Even if I'm right in the discussion, I stay silent to hurt my spouse.
+47. When I discuss with my spouse, I stay silent because I am afraid of not being able to control my anger.
+48. I feel right in our discussions.
+49. I have nothing to do with what I've been accused of.
+50. I'm not actually the one who's guilty about what I'm accused of.
+51. I'm not the one who's wrong about problems at home.
+52. I wouldn't hesitate to tell my spouse about her/his inadequacy.
+53. When I discuss, I remind my spouse of her/his inadequacy.
+54. I'm not afraid to tell my spouse about her/his incompetence.
+
+
+
+# Exploratory Data Analysis
+
+
+## Check Data Types
+
+Let us check each column's data type.
+
+```{r}
+glimpse(divorce)
+```
+After we check the datatypes, only our target variable data type that needs to be changed to factor/category
+
+```{r}
+divorce <- divorce %>%  
+            mutate(Class=ifelse(Class==1,"divorce","not_divorce")) %>% 
+            mutate(Class=as.factor(Class))
+  
+  
+
+head(divorce)
+```
+
+All the data types are correct, we are ready to go for the next step
+
+
+## Check Missing values
+
+We have to check if there is any missing values in our data set
+
+```{r}
+colSums(is.na(divorce))
+```
+There are no missing values in our data set. Now we are ready to go to the data analysis.
+
+
+
+## Data Analysis
+
+To get to know more about our data, let us check the summary.
+
+```{r}
+summary(divorce)
+```
+
+Below frequency data visualization for each numerical variables
+
+```{r fig.height=10, fig.width=10}
+ggplot(gather(divorce %>% select_if(is.numeric)), aes(value)) + 
+    geom_histogram(bins = 10, fill="dodgerblue4") + 
+    facet_wrap(~key, scales = 'free_x',nrow=6) +
+  theme_bw()
+```
+
+Summary of the variables:
+
+- If we look at the visualization, Some of question's answers are averagely have balance quantity of number 0 and 4 responses. 
+- However we also can see Some of question's answers are have a strong number 0 responses in terms of quantity. For example Atr no 7. We will analyse this later on.
+- Most of the question's answers are averagely < 2.
+
+Let's check the proportion of our target variable
+
+```{r}
+prop.table(table(divorce$Class))
+```
+Our target variable has a balance proportion
+
+
+# Model Fitting and Evaluation
+
+## Cross Validation
+
+Before we build our model, we should split the dataset into training and test data. We will split the data into 80% training and 20% test using `sample()` function, `set.seed(100)`, and store it as `data.train` and `data.test`
+
+```{r}
+
+RNGkind(sample.kind = "Rounding")
+set.seed(100)
+
+splitter_sample <- sample(nrow(divorce), nrow(divorce)*0.8)
+
+data.train <- divorce[splitter_sample, ]
+data.test <- divorce[-splitter_sample, ]
+
+
+```
+
+Now let us check the target variable proportion  of our data train.
+
+```{r}
+prop.table(table(data.train$Class))
+```
+
+Now let us check the target variable proportion  of our data test.
+
+```{r}
+prop.table(table(data.test$Class))
+```
+If we look at above proportion results, both of our data train and data set have balance target variables. So there is no needs to do upsampling or downsampling. 
+
+Now let us build our models!
+
+## Naive Bayes Classifier
+
+Naive Bayes is a simple technique for constructing classifiers: models that assign class labels to problem instances, represented as vectors of feature values, where the class labels are drawn from some finite set. There is not a single algorithm for training such classifiers, but a family of algorithms based on a common principle: all naive Bayes classifiers assume that the value of a particular feature is independent of the value of any other feature, given the class variable.
+
+There are several advantages in using this model, for example:
+
+- The model is relatively fast to train
+- It is estimating a probabilistic prediction
+- It can handle irrelevant features
+
+After splitting our data into train and test set and downsample our train data, let us build our first model of Naive Bayes. Build a Naive Bayes model using `naiveBayes()` function from the `e1071` package, then set the laplace parameter as 1.
+
+```{r}
+model_naive <- naiveBayes(x = divorce %>% select(-Class), 
+                          y = divorce$Class, 
+                          laplace = 1) 
+```
+
+Now let us predict our test data to obtain class prediction.
+
+```{r}
+pred_naive <- predict(object= model_naive,
+                           newdata = data.test,
+                           type="class")
+```
+
+Now let us check the model performance for the Naive Bayes model using `confusionMatrix()` and compare the predicted class (`pred_naive`) with the actual label in `data.test`using divorce Class as the positive class (`positive = "divorce"`).
+
+```{r}
+
+confusionMatrix(data= pred_naive,
+                reference= data.test$Class,
+                positive="divorce")
+```
+If we look at above confusion matrix. We have a 97,06 % accuracy. It means that this model can predict divorce with 97,06 % accuracy. It means this model is good to predict both divorce and no_divorce. If we can predict a couple is going to potentially divorce, we can propose them to go to marriage consultant to reconciliate and fix the marriage before it's too late. If we can predict a couple is not going to divorce it will help them to retain and tighter the marriage .
+
+This model also has high percentage in other metrics such as Recall/Sensitivity, Specificity, and Pos Pred value/Precision.
+
+Since we have balanced data with good accuracy, recall, precision, specificity, then we do not need to check the Receiver-Operating Curve (ROC) and the Area Under ROC Curve (AUC).
+
+
+## Decision Tree
+
+A decision tree is a flowchart-like structure in which each internal node represents a "test" on an attribute (e.g. whether a coin flip comes up heads or tails), each branch represents the outcome of the test, and each leaf node represents a class label (decision taken after computing all attributes). The paths from root to leaf represent classification rules.
+
+In decision analysis, a decision tree and the closely related influence diagram are used as a visual and analytical decision support tool, where the expected values (or expected utility) of competing alternatives are calculated.
+
+A decision tree consists of three types of nodes:[1]
+
+Decision nodes – typically represented by squares
+Chance nodes – typically represented by circles
+End nodes – typically represented by triangles
+
+Let us build our decision tree model using `ctree()` function to build the model and store it under the `model_dt` object.
+
+```{r}
+set.seed(100)
+
+model_dt <-ctree(Class ~ ., divorce)
+```
+
+
+Now let us predict our test data to obtain class prediction.
+
+```{r}
+pred_dt <- predict(model_dt, newdata = data.test, type = "response")
+```
+
+Now let us check the model performance for the Decision Tree model using `confusionMatrix()` and compare the predicted class (`pred_dt`) with the actual label in `data.test`using divorce Class as the positive class (`positive = "divorce"`).
+
+```{r}
+confusionMatrix(pred_dt, data.test$Class, positive = "divorce")
+```
+If we look at above confusion matrix, we can see the accuracy is 97,06 %. It is interesting because we have the same accuracy and another metrics as Naive bayes model.
+
+Now let us check the model performance with data train and compare to data test, to check whether this model is overfitting, just right, or under fitting
+
+```{r}
+pred_dt_train <- predict(model_dt, newdata = data.train, type = "response")
+confusionMatrix(pred_dt_train, data.train$Class, positive = "divorce")
+```
+Accuracy data comparison:
+
+- Accuracy data test: 0.9706
+- Accuracy data train: 0.9706
+
+Basically the Accuracy value for both data.test and data.train is high and the same value. So the model is just right fitting and we do not need to do pruning.
+
+Why Accuracy metrics? Same as mentioned in naive bayes,It means this model is good to predict both divorce and no_divorce. If we can predict a couple is going to potentially divorce, we can propose them to go to marriage consultant to reconciliate and fix the marriage before it's too late. If we can predict a couple is not going to divorce it will help them to retain and tighter the marriage .
+
+
+To have a better grasp of our model, we will plot the model and set `type = "simple"`.
+
+```{r}
+plot(model_dt,type="simple")
+```
+It looks like the plot is self explanatory. It is interesting that we have a variable Atr40 that directly get to Class decision.
+
+- Atr40 : We're just starting a fight before I know what's going on.
+
+
+
+## Random Forest
+
+Random forest is an ensemble-based state-of-the-art algorithm built on the decision tree method we learned about above and is also known for its versatility and performance. Among the family of ensemble-based classifier include a technique called boosting and it works by combining the performance of weak learners to gain an overall boosted performance. 
+
+The idea of ensembling is largely in principle and doesn't necessarily reference any particular algorithm. They describe any meta-algorithms that combine several machine learning techniques into one predictive model in order to decrease variance, reduce bias, or improve predictions.
+
+When we apply the ensemble-based approach on a decision tree model, the trees we built are usually trained using resampled data. In the prediction phase, these trees then vote for a final prediction. Another way to apply ensemble methods on our tree model is known as bagging (bootstrap aggregation). Bagging proposes the idea of creating many subsets of training sample through random sampling (with replacement). Then each of these sets of training sample are used to train one unit of decision tree. This leads us to an "ensemble" of trees, and we'll use the average of all the predictions from these different trees in the prediction phase. 
+
+Random Forest extends the idea of bagging by taking one more measure: in addition to creating subsets from the training set, each of the tree is also trained using a random selection of features (rather than using all features). Because each tree is built with a random set of predictors and training samples, the collective of it is called a Random Forest, which is a lot more robust as a model compared to a single tree. 
+
+Among many of its advantages, random forest can be used to solve for both regression and classification tasks, handles extremely large datasets well (since the ensemble approach means it only use a small sampled subset from the full dataset), would solve for the dimensionality problems through implicit feature selection while treating noisy data (missing values and outlier values) out of the box. 
+
+Let us create our Random Forest now, using a 5-Fold Cross Validation, with 3 repeats.
+
+```{r}
+set.seed(100)
+ 
+ctrl <- trainControl(method = "repeatedcv",
+                      number = 5,
+                      repeats = 3) 
+ 
+model_forest <- train(Class ~ .,
+                    data = data.train,
+                    method = "rf", 
+                    trControl = ctrl)
+ 
+saveRDS(model_forest, "model_forest_update.RDS")
+```
+
+```{r}
+model_rf <- readRDS("model_forest_update.RDS")
+```
+
+Now let us check the summary of the final model we built using `model_rf$finalModel`
+
+```{r}
+model_rf$finalModel
+```
+If we look at the model above, the OOB or Out-Off-Bag error is 2.21%, It means that this model has accuracy of 97.79%.
+
+We could also use *Variable Importance*, to get a list of the most important variables used in our random forest. Many would argue that random forest, being a black box model, can offer no true information beyond its job in accuracy; actually paying special attention to attributes like variable importance for example often do help us gain valuable information about our data.
+
+Let us check which variable has a high influence to the prediction.
+
+```{r fig.height=10}
+varImp(model_rf)
+plot(varImp(model_rf))
+```
+If we look at plot above, Top 5 most important attributes are:
+
+- Atr17 : We share the same views about being happy in our life with my spouse
+- Atr30 : I know my spouse's friends and their social relationships
+- Atr19 : My spouse and I have similar ideas about how marriage should be
+- Atr20 : My spouse and I have similar values in trust.
+- Atr18 : My spouse and I have similar ideas about how marriage should be
+
+After building the model, we can now predict the test data based on `model_rf` using `predict()` function and set the parameter `type = "raw"` to obtain class prediction. 
+
+```{r}
+pred_rf <- predict(model_rf, data.test, type = "raw")
+```
+
+Next, let us evaluate the random forest model built using `confusionMatrix()`
+
+```{r}
+confusionMatrix(pred_rf, data.test$Class, positive = "divorce")
+```
+
+
+# Conclusion
+
+Let us look below comparison between each models with every metrics
+
+```{r echo=F}
+Model <- c("Naive Bayes", "Decision Tree", "Random Forest (OOB-Accuracy")
+Accuracy <- c(0.9706,0.9706,0.9779)
+Recall <- c(0.9412,0.9412,0.9412 )
+specificity <-c(1,1,1 )
+Precision <- c(1,1,1)
+
+df <- data.frame(Model, Accuracy,Recall,specificity,Precision )
+
+print (df)
+```
+If we look result above, All of our models perform very well. Even they have same result in Recall, specifity and precision. However we will choose Random Forest for this dataset since the Accuracy from the OOB is higher than Accuracy from another models. 
+
+As mention in the model evaluation, the reason we choose accuracy metric is that this metric is good to predict both divorce and no_divorce. If we can predict a couple is going to potentially divorce, we can propose them to go to marriage consultant to reconciliate and fix the marriage before it's too late. If we can predict a couple is not going to divorce it will help them to retain and tighter the marriage .
+
+Suggestion from this report is we need more data sample to predict more accurate result since the sample is only less than 200 couple. 
+
+
+
